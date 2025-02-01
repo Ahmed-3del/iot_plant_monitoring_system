@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -16,24 +17,29 @@ import { Alert, AlertDescription, AlertTitle } from "./components/ui/alert";
 import { Button } from "./componenets/ui/Button";
 import { Settings } from "./componenets/settings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./componenets/ui/Card";
+import useWebSocketSensorData from "./utils/useWebSocket";
+import ErrorBoundary from "./utils/ErrorBoundary";
 // import { setupMqtt } from "./utils/mqttClient";
 
 // Plant health thresholds (low, optimal, high) for each sensor
 const THRESHOLDS = {
-  humidity: { low: 30, optimal: 50, high: 80 }, // % RH (Relative Humidity)
-  temperature: { low: 18, optimal: 23, high: 28 },
+  Humidity: { low: 30, optimal: 50, high: 80 }, // % RH (Relative Humidity)
+  Temperature: { low: 18, optimal: 23, high: 28 },
   light: { low: 30, optimal: 60, high: 85 },
   soilNutrients: { low: 40, optimal: 70, high: 90 },
 };
 
 interface SensorData {
-  humidity: number;
-  temperature: number;
+  Humidity: number;
+  Temperature: number;
   lightLevel: number;
   soilMoisture: number;
   soilNutrients: number;
   waterLevel: number;
+  Signal_Strength: number;
 }
+
+// {"Temperature":166,"Humidity":374,"Battery_Health":55,"Signal_Strength":66}
 
 interface Alert {
   type: "warning" | "error" | "info";
@@ -44,14 +50,7 @@ interface Alert {
 }
 
 export default function Dashboard() {
-  const [sensorData, setSensorData] = useState<SensorData | null>({
-    humidity: 0,
-    temperature: 0,
-    lightLevel: 0,
-    soilMoisture: 0,
-    soilNutrients: 0,
-    waterLevel: 0,
-  });
+  
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [plantHealth, setPlantHealth] = useState("Good");
   const [deviceHealth] = useState({
@@ -59,48 +58,25 @@ export default function Dashboard() {
     signalStrength: 75,
     lastUpdate: new Date().toISOString(),
   });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  // Fetch sensor data from the backend API
-  const fetchSensorData = async () => {
-    try {
-      const response = await fetch("http://localhost:8080/api/sensors", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-      if (!response.ok) {
-        throw new Error("Failed to fetch sensor data");
-      }
-      const data = await response.json();
-      setSensorData(JSON.parse(data.data));
-      setError(null);
-    } catch (error) {
-      console.error("Error fetching sensor data:", error);
-      setError("Failed to fetch sensor data. Please try again later.");
-    } finally {
-      setLoading(false);
-    }
-  }; 
-  console.log(sensorData,"sensorData");
-  console.log(typeof sensorData,"typeof sensorData");
+  const { sensorData, loading }: { sensorData: any, loading: boolean, error: string | null } = useWebSocketSensorData("ws://127.0.0.1:8080");
+  console.log(sensorData, "sensorData in dashboard");
+
   const evaluatePlantHealth = (data: SensorData) => {
     const issues: string[] = [];
     const criticalIssues: string[] = [];
 
-    // Check humidity
-    if (data.humidity < THRESHOLDS.humidity.low) {
+    // Check Humidity
+    if (data.Humidity < THRESHOLDS.Humidity.low) {
       criticalIssues.push("Critical: Low Humidity");
-    } else if (data.humidity > THRESHOLDS.humidity.high) {
+    } else if (data.Humidity > THRESHOLDS.Humidity.high) {
       issues.push("High Humidity");
     }
 
-    // Check temperature
-    if (data.temperature < THRESHOLDS.temperature.low) {
+    // Check Temperature
+    if (data.Temperature < THRESHOLDS.Temperature.low) {
       issues.push("Low Temperature");
-    } else if (data.temperature > THRESHOLDS.temperature.high) {
+    } else if (data.Temperature > THRESHOLDS.Temperature.high) {
       criticalIssues.push("Critical: High Temperature");
     }
 
@@ -150,23 +126,25 @@ export default function Dashboard() {
   const handleIssue = (issue: string) => {
     switch (issue) {
       case "Critical: Low Humidity":
-        sendDataToESP("increase_humidity");
+        sendDataToESP("INCREASE_HUMIDITY");
+        // sendDataToESP("ALARM_ON");
         break;
       case "Critical: High Temperature":
-        sendDataToESP("activate_cooling");
+        sendDataToESP("ACTIVATE_COOLING");
         break;
       case "Critical: Low Nutrients":
-        sendDataToESP("add_nutrients");
+        sendDataToESP("ADD_NUTRIENTS");
         break;
       default:
         console.log(`Handling issue: ${issue}`);
+      //  sendDataToESP("");
     }
   };
 
   // Fetch sensor data on component mount
-  useEffect(() => { 
-    fetchSensorData(); 
-  }, []);
+  // useEffect(() => { 
+  //   fetchSensorData(); 
+  // }, []);
 
   // Update plant health when sensor data changes
   useEffect(() => {
@@ -177,12 +155,19 @@ export default function Dashboard() {
   }, [sensorData]);
 
 
-  const sendDataToESP = (action: string) => {
+  const sendDataToESP = async (action: string) => {
     console.log(`Sending action to ESP32: ${action}`);
+    await fetch(`http://localhost:8080/api/sensors/control`, {
+      method: "POST",
+      body: JSON.stringify({ action }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
   };
 
   const onApplySettings = () => {
-    sendDataToESP("update_settings");
+    sendDataToESP("UPDATE_SETTINGS");
   };
   if (loading) {
     return <div>Loading...</div>;
@@ -192,7 +177,7 @@ export default function Dashboard() {
   //   return <div>{error}</div>;
   // }
 
-  if (!sensorData) { 
+  if (!sensorData) {
     return <div>No sensor data available.</div>;
   }
 
@@ -214,24 +199,24 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <SensorCard
               title="Humidity"
-              value={sensorData.humidity}
+              value={sensorData.Humidity}
               unit="%"
               icon={<Droplets className="h-6 w-6" />}
-              onSendData={() => sendDataToESP("humidity_data")}
+              onSendData={() => sendDataToESP("Humidity_data")}
               threshold={{
-                low: THRESHOLDS.humidity.low,
-                high: THRESHOLDS.humidity.high,
+                low: THRESHOLDS.Humidity.low,
+                high: THRESHOLDS.Humidity.high,
               }}
             />
             <SensorCard
               title="Temperature"
-              value={sensorData.temperature}
+              value={sensorData.Temperature}
               unit="°C"
               icon={<Thermometer className="h-6 w-6" />}
-              onSendData={() => sendDataToESP("temperature_data")}
+              onSendData={() => sendDataToESP("Temperature_data")}
               threshold={{
-                low: THRESHOLDS.temperature.low,
-                high: THRESHOLDS.temperature.high,
+                low: THRESHOLDS.Temperature.low,
+                high: THRESHOLDS.Temperature.high,
               }}
             />
             <SensorCard
@@ -263,8 +248,11 @@ export default function Dashboard() {
                 high: THRESHOLDS.soilNutrients.high,
               }}
             />
-            <PlantHealthCard health={plantHealth} />
-            <DeviceHealthCard health={deviceHealth} />
+            <ErrorBoundary fallback={<div>Error loading device health data.</div>}>
+              <PlantHealthCard health={plantHealth} />
+              <DeviceHealthCard health={deviceHealth} sensorData={sensorData} />
+            </ErrorBoundary>
+
           </div>
           {alerts.map((alert, index) => (
             <Alert
@@ -287,6 +275,7 @@ export default function Dashboard() {
           <Settings
             onApplySettings={onApplySettings}
             onResetAlarms={() => setAlerts([])}
+            sendDataToESP={sendDataToESP}
           />
         </TabsContent>
       </Tabs>
@@ -387,8 +376,10 @@ function PlantHealthCard({ health }: { health: string }) {
 
 function DeviceHealthCard({
   health,
+  sensorData,
 }: {
   health: { batteryLevel: number; signalStrength: number; lastUpdate: string };
+  sensorData: any;
 }) {
   return (
     <Card>
@@ -402,8 +393,8 @@ function DeviceHealthCard({
             <span className="text-sm font-medium">Signal Strength</span>
             <Wifi className="h-4 w-4" />
           </div>
-          <Progress value={health.signalStrength} className="h-2" />
-          <div className="text-xs text-muted-foreground mt-1">{health.signalStrength.toFixed(1)}%</div>
+          <Progress value={sensorData.Signal_Strength || 0} className="h-2" />
+          <div className="text-xs text-muted-foreground mt-1">{sensorData.Signal_Strength.toFixed(1) || 0}%</div>
         </div>
         <div className="text-xs text-muted-foreground">
           Last Update: {new Date(health.lastUpdate).toLocaleString()}
