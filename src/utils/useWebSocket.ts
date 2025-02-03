@@ -47,15 +47,7 @@ const useWebSocketSensorData = (wsUrl: string) => {
           if (!data.message) {
             throw new Error("Invalid data format: 'message' property missing");
           }
-        //   const parsedData: SensorData = {
-        //     Humidity: data.message.Humidity ?? 0,
-        //     Temperature: data.message.Temperature ?? 0,
-        //     lightLevel: data.message.lightLevel ?? 0,
-        //     soilMoisture: data.message.soilMoisture ?? 0,
-        //     soilNutrients: data.message.soilNutrients ?? 0,
-        //     waterLevel: data.message.waterLevel ?? 0,
-        //     Signal_Strength: data.message.Signal_Strength ?? 0,
-        //   };
+
          const parsedData = JSON.parse(data.message);
           setSensorData((prevData) => ({ ...prevData, ...parsedData }));
         } catch (err) {

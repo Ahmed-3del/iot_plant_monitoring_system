@@ -29,23 +29,8 @@ export function Settings({ onResetAlarms }: SettingsProps) {
   // System controls
   const [autoMode, setAutoMode] = useState(true)
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
-
-  // Climate controls
-
-  // Irrigation controls
-  // const [irrigationSchedule, setIrrigationSchedule] = useState("06:00")
-  // const [irrigationDuration, setIrrigationDuration] = useState(10)
-
-  // // Lighting controls
-  // const [lightScheduleStart, setLightScheduleStart] = useState("06:00")
-  // const [lightScheduleEnd, setLightScheduleEnd] = useState("18:00")
-  // const [lightMode, setLightMode] = useState("auto")
-
-  // Nutrient and pesticide controls
-  // const [fertilizeSchedule, setFertilizeSchedule] = useState("weekly")
   const [pestControlEnabled, setPestControlEnabled] = useState(true)
   const [pestControlSchedule, setPestControlSchedule] = useState("bi-weekly")
-
 
   const sendDataToESP32 = async (action: string) => {
     console.log(`Sending action to ESP32: ${action}`);
@@ -178,7 +163,7 @@ export function Settings({ onResetAlarms }: SettingsProps) {
               Stop Irrigation
             </Button>
           </div>
-            {/* <div className="grid grid-cols-2 gap-4">
+          {/* <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="irrigation-time">Irrigation Time</Label>
               <Input
@@ -293,7 +278,7 @@ export function Settings({ onResetAlarms }: SettingsProps) {
           <CardDescription>Manage fertilizer and pesticide distribution</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-        
+
           <div className="grid grid-cols-2 gap-4">
             <Button onClick={() =>
               sendDataToESP32("START_FERTILIZING")

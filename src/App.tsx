@@ -50,7 +50,7 @@ interface Alert {
 }
 
 export default function Dashboard() {
-  
+
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [plantHealth, setPlantHealth] = useState("Good");
   const [deviceHealth] = useState({
@@ -122,6 +122,12 @@ export default function Dashboard() {
     if (issues.length > 0) return "Fair";
     return "Good";
   };
+
+  useEffect(() => {
+    if (alerts.length > 0) {
+      sendDataToESP("ALARM_ON");
+    }
+  }, [alerts]);
 
   const handleIssue = (issue: string) => {
     switch (issue) {
