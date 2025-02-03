@@ -17,8 +17,9 @@ import { Alert, AlertDescription, AlertTitle } from "./components/ui/alert";
 import { Button } from "./componenets/ui/Button";
 import { Settings } from "./componenets/settings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./componenets/ui/Card";
-import useWebSocketSensorData from "./utils/useWebSocket";
+// import useWebSocketSensorData from "./utils/useWebSocket";
 import ErrorBoundary from "./utils/ErrorBoundary";
+import useMqttSensorData from "./utils/useMqtt";
 // import { setupMqtt } from "./utils/mqttClient";
 
 // Plant health thresholds (low, optimal, high) for each sensor
@@ -59,7 +60,8 @@ export default function Dashboard() {
     lastUpdate: new Date().toISOString(),
   });
 
-  const { sensorData, loading }: { sensorData: any, loading: boolean, error: string | null } = useWebSocketSensorData("ws://127.0.0.1:8080");
+  // const { sensorData, loading }: { sensorData: any, loading: boolean, error: string | null } = useWebSocketSensorData("ws://127.0.0.1:8080");
+  const { sensorData, loading } = useMqttSensorData();
   console.log(sensorData, "sensorData in dashboard");
 
   const evaluatePlantHealth = (data: SensorData) => {
